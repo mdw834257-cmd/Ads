@@ -12,16 +12,18 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v3
 
+      # --- UPDATE 1: NODE VERSION 20 (Required for Cordova 13) ---
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '20'
 
+      # --- UPDATE 2: JAVA VERSION 17 (Required for latest Android Builds) ---
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
 
       - name: Install Dependencies
         run: |
@@ -35,7 +37,8 @@ jobs:
         run: |
           cordova create myApp ${{ github.event.client_payload.package_name }} "${{ github.event.client_payload.app_name }}"
           cd myApp
-          cordova platform add android@10.1.1
+          # Using latest android platform compatible with Node 20
+          cordova platform add android
 
       # --- FETCH SOURCE ---
       - name: Fetch Source
@@ -49,11 +52,10 @@ jobs:
             exit 1
           fi
 
-      # --- INJECT ADMOB LOGIC (FIXED: Uses Node.js to write file) ---
+      # --- INJECT ADMOB LOGIC (Node.js based - NO ERROR) ---
       - name: Inject AdMob System
         working-directory: ./myApp
         run: |
-          # Use Node.js to write the file to avoid Bash EOF/Whitespace errors
           node -e "
             const fs = require('fs');
             const enabled = '${{ github.event.client_payload.admob_config.enabled }}';
@@ -63,7 +65,6 @@ jobs:
                 const bannerId = '${{ github.event.client_payload.admob_config.banner_id }}';
                 const interId = '${{ github.event.client_payload.admob_config.inter_id }}';
                 
-                // Create the Ad Logic Script content
                 const adScriptContent = \`
                 document.addEventListener('deviceready', async function() {
                      console.log('AdMob: Initializing...');
@@ -81,23 +82,18 @@ jobs:
                 }, false);
                 \`;
                 
-                // Write ad_logic.js
                 fs.writeFileSync('ad_logic.js', adScriptContent);
-                console.log('✅ ad_logic.js created');
-
-                // Inject into index.html
                 let html = fs.readFileSync('www/index.html', 'utf8');
                 const scriptTag = '<script>' + adScriptContent + '</script>';
                 html = html.replace('</body>', scriptTag + '</body>');
                 fs.writeFileSync('www/index.html', html);
-                console.log('✅ Injected into index.html');
+                console.log('✅ Injected AdMob Logic');
                 
             } else {
                 console.log('ℹ️ No AdMob configuration provided.');
             }
           "
           
-          # Install Plugin if enabled (Bash check for safety)
           if [ "${{ github.event.client_payload.admob_config.enabled }}" == "true" ]; then
              APP_ID="${{ github.event.client_payload.admob_config.app_id }}"
              cordova plugin add cordova-plugin-admob-plus --variable APP_ID_ANDROID="$APP_ID"
@@ -109,7 +105,6 @@ jobs:
         run: |
           npm link javascript-obfuscator
           
-          # Using Node.js again to avoid EOF errors in encryption script creation
           node -e "
             const fs = require('fs');
             const scriptContent = \`
