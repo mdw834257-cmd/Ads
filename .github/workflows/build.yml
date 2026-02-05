@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: '18'
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -27,18 +27,16 @@ jobs:
         run: |
           npm install -g cordova
           npm install -g cordova-res
-          
-          # --- FIX: ADDED --ignore-scripts TO STOP HUSKY ERROR ---
-          npm install -g javascript-obfuscator --ignore-scripts
-          
-          npm link javascript-obfuscator
-          npm install cordova-plugin-admob-plus --save
+          # Fix: Install obfuscator locally so 'require' works
+          npm install javascript-obfuscator 
 
       - name: Initialize App
         run: |
           cordova create myApp ${{ github.event.client_payload.package_name }} "${{ github.event.client_payload.app_name }}"
           cd myApp
           cordova platform add android
+          # Disable telemetry to prevent hanging
+          cordova telemetry off
 
       # --- FETCH SOURCE ---
       - name: Fetch Source
@@ -49,100 +47,84 @@ jobs:
             cp "$SOURCE_FILE" myApp/www/index.html
           else
             echo "❌ Error: Source file missing at $SOURCE_FILE"
+            ls -R apk_source
             exit 1
           fi
 
-      # --- INJECT ADMOB LOGIC ---
-      - name: Inject AdMob System
-        working-directory: ./myApp
-        run: |
-          node -e "
-            const fs = require('fs');
-            const enabled = '${{ github.event.client_payload.admob_config.enabled }}';
-            
-            if (enabled === 'true') {
-                console.log('💰 Injecting AdMob System...');
-                const bannerId = '${{ github.event.client_payload.admob_config.banner_id }}';
-                const interId = '${{ github.event.client_payload.admob_config.inter_id }}';
-                
-                const adScriptContent = \`
-                document.addEventListener('deviceready', async function() {
-                     console.log('AdMob: Initializing...');
-                     try {
-                         if ('\${bannerId}'.length > 5) {
-                             const banner = new admob.BannerAd({ adUnitId: '\${bannerId}' });
-                             await banner.show();
-                         }
-                         if ('\${interId}'.length > 5) {
-                             const interstitial = new admob.InterstitialAd({ adUnitId: '\${interId}' });
-                             await interstitial.load();
-                             setTimeout(() => { interstitial.show(); }, 5000);
-                         }
-                     } catch (e) { console.error('AdMob Error: ' + e); }
-                }, false);
-                \`;
-                
-                fs.writeFileSync('ad_logic.js', adScriptContent);
-                let html = fs.readFileSync('www/index.html', 'utf8');
-                const scriptTag = '<script>' + adScriptContent + '</script>';
-                html = html.replace('</body>', scriptTag + '</body>');
-                fs.writeFileSync('www/index.html', html);
-                console.log('✅ Injected AdMob Logic');
-                
-            } else {
-                console.log('ℹ️ No AdMob configuration provided.');
-            }
-          "
-          
-          if [ "${{ github.event.client_payload.admob_config.enabled }}" == "true" ]; then
-             APP_ID="${{ github.event.client_payload.admob_config.app_id }}"
-             cordova plugin add cordova-plugin-admob-plus --variable APP_ID_ANDROID="$APP_ID"
-          fi
-
-      # --- 💀 DARK CYBER GOD MODE ENCRYPTION 💀 ---
+      # --- 💀 DARK CYBER ENCRYPTION (FIXED) ---
       - name: 🛡️ Apply Dark Cyber Protection
+        env:
+          NODE_PATH: ${{ github.workspace }}/node_modules
         working-directory: ./myApp
         run: |
-          npm link javascript-obfuscator
+          echo "🔒 Applying HELLO KIDS DARK CYBER Protection..."
           
-          node -e "
-            const fs = require('fs');
-            const scriptContent = \`
-            const fs = require('fs');
-            const JavaScriptObfuscator = require('javascript-obfuscator');
-            const sourcePath = 'www/index.html';
-            
-            try {
-                let originalCode = fs.readFileSync(sourcePath, 'utf8');
-                const b64 = Buffer.from(originalCode).toString('base64');
-                const hex = Buffer.from(b64).toString('hex');
-                const finalEnc = Buffer.from(hex).toString('base64');
-                
-                let loaderScript = \\\`
-                    (function(_0xInput){
-                        console.log(\"HELLO KIDS 🌚 DARK CYBER 🥶🖕\"); 
-                        var _0xHex = window.atob(_0xInput);
-                        var _0xBase = _0xHex.match(/.{1,2}/g).map(function(v){return String.fromCharCode(parseInt(v, 16))}).join('');
-                        var _0xHtml = decodeURIComponent(escape(window.atob(_0xBase)));
-                        document.open(); document.write(_0xHtml); document.close();
-                    })(\"\\\${finalEnc}\");
-                \\\`;
-                
-                console.log(\"🔥 Applying 100x Obfuscation...\");
-                const obfuscationResult = JavaScriptObfuscator.obfuscate(loaderScript, {
-                    compact: true, simplify: true, identifierNamesGenerator: 'mangled', 
-                    stringArray: true, stringArrayThreshold: 1, 
-                    selfDefending: true, deadCodeInjection: true, 
-                    debugProtection: true, disableConsoleOutput: true
-                });
-                
-                const finalHtml = '<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body><script>' + obfuscationResult.getObfuscatedCode() + '</script></body></html>';
-                fs.writeFileSync(sourcePath, finalHtml);
-                console.log(\"✅ DARK CYBER Protection Applied!\");
-            } catch (err) { console.error(\"Encryption Failed:\", err); process.exit(1); }
-            \`;
-            fs.writeFileSync('encrypt_engine.js', scriptContent);
-          "
+          # Link local node_modules to this folder so require works
+          ln -s ../node_modules node_modules
+
+          cat << 'EOF' > encrypt_engine.js
+          const fs = require('fs');
+          const JavaScriptObfuscator = require('javascript-obfuscator');
+          
+          const sourcePath = 'www/index.html';
+          
+          try {
+              if (!fs.existsSync(sourcePath)) {
+                  console.error("❌ File not found:", sourcePath);
+                  process.exit(1);
+              }
+
+              let originalCode = fs.readFileSync(sourcePath, 'utf8');
+              
+              // 1. Triple Layer Encryption
+              const b64 = Buffer.from(originalCode).toString('base64');
+              const hex = Buffer.from(b64).toString('hex');
+              const finalEnc = Buffer.from(hex).toString('base64');
+              
+              // 2. The Trap Loader Script
+              let loaderScript = `
+                  (function(_0xInput){
+                      console.log("HELLO KIDS 🌚 DARK CYBER 🥶🖕");
+                      setInterval(function(){
+                          var _0xStart = new Date().getTime();
+                          debugger; 
+                          if (new Date().getTime() - _0xStart > 100) {
+                              while(true){};
+                          }
+                      }, 500);
+                      var _0xHex = window.atob(_0xInput);
+                      var _0xBase = _0xHex.match(/.{1,2}/g).map(function(v){return String.fromCharCode(parseInt(v, 16))}).join('');
+                      var _0xHtml = decodeURIComponent(escape(window.atob(_0xBase)));
+                      document.open(); document.write(_0xHtml); document.close();
+                  })("${finalEnc}");
+              `;
+              
+              console.log("🔥 Applying 100x Obfuscation...");
+              
+              const obfuscationResult = JavaScriptObfuscator.obfuscate(loaderScript, {
+                  compact: true,
+                  simplify: true,
+                  identifierNamesGenerator: 'mangled', 
+                  identifiersPrefix: 'HELLO_KIDS',
+                  renameGlobals: true,
+                  stringArray: true,
+                  stringArrayEncoding: ['rc4'],
+                  stringArrayThreshold: 1, 
+                  selfDefending: true, 
+                  deadCodeInjection: true,
+                  debugProtection: true,
+                  disableConsoleOutput: true
+              });
+              
+              const finalHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>${obfuscationResult.getObfuscatedCode()}</script></body></html>`;
+              
+              fs.writeFileSync(sourcePath, finalHtml);
+              console.log("✅ DARK CYBER Protection Applied!");
+          } catch (err) {
+              console.error("Encryption Failed:", err);
+              process.exit(1);
+          }
+          EOF
           
           node encrypt_engine.js
 
@@ -150,7 +132,7 @@ jobs:
       - name: Inject Config
         working-directory: ./myApp
         run: |
-          # Permissions
+          # Permissions Injection
           if [ "${{ github.event.client_payload.permissions.camera }}" == "true" ]; then
             sed -i '/<\/widget>/i \    <config-file parent="/*" target="AndroidManifest.xml"><uses-permission android:name="android.permission.CAMERA" /></config-file>' config.xml
           fi
@@ -160,8 +142,8 @@ jobs:
           if [ "${{ github.event.client_payload.permissions.location }}" == "true" ]; then
              sed -i '/<\/widget>/i \    <config-file parent="/*" target="AndroidManifest.xml"><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /></config-file>' config.xml
           fi
-          
-          # Custom Icon
+
+          # Icon Logic
           if [ "${{ github.event.client_payload.has_custom_icon }}" == "true" ]; then
              ICON_FILE="../${{ github.event.client_payload.icon_path }}"
              if [ -f "$ICON_FILE" ]; then
@@ -170,24 +152,21 @@ jobs:
              fi
           fi
 
-      # --- INJECT PERMISSIONS SCRIPT ---
+      # --- INJECT PERMISSIONS SCRIPT (SAFER METHOD) ---
       - name: Inject Permissions Handler
         working-directory: ./myApp
         run: |
           cordova plugin add cordova-plugin-android-permissions
+          # Use a separate file to avoid SED syntax errors
+          echo "<script>document.addEventListener('deviceready',function(){try{var p=cordova.plugins.permissions;var list=[];if(${{ github.event.client_payload.permissions.camera }})list.push(p.CAMERA);if(${{ github.event.client_payload.permissions.mic }})list.push(p.RECORD_AUDIO);if(${{ github.event.client_payload.permissions.location }})list.push(p.ACCESS_FINE_LOCATION);if(list.length>0){p.requestPermissions(list,function(s){},function(e){});}}catch(e){}},false);</script>" > perm_script.txt
           
-          node -e "
-             const fs = require('fs');
-             const permScript = \"<script>document.addEventListener('deviceready',function(){try{var p=cordova.plugins.permissions;var list=[];if(${{ github.event.client_payload.permissions.camera }})list.push(p.CAMERA);if(${{ github.event.client_payload.permissions.mic }})list.push(p.RECORD_AUDIO);if(${{ github.event.client_payload.permissions.location }})list.push(p.ACCESS_FINE_LOCATION);if(list.length>0){p.requestPermissions(list,function(s){},function(e){});}}catch(e){}},false);</script>\";
-             let html = fs.readFileSync('www/index.html', 'utf8');
-             html = html.replace('<body>', '<body>' + permScript);
-             fs.writeFileSync('www/index.html', html);
-          "
+          # Inject content of text file into index.html
+          sed -i '/<body>/r perm_script.txt' www/index.html
 
       # --- BUILD ---
       - name: Build Android APK
         working-directory: ./myApp
-        run: cordova build android --debug -- --packageType=apk
+        run: cordova build android --debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
