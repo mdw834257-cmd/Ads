@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Jalwa — ULTIMATE DARK CYBER</title>
+<!-- Futuristic Font -->
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #020202;
+    --bg-panel: rgba(10, 15, 20, 0.85);
+    --neon-green: #00ff41;
+    --neon-blue: #00f3ff;
+    --neon-red: #ff003c;
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --scanline: rgba(0, 255, 65, 0.03);
+    --font-main: 'Rajdhani', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+  }
+
+  * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+  
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    background-color: var(--bg-dark);
+    color: #fff;
+    font-family: var(--font-main);
+    overflow: hidden;
+  }
+
+  /* === CYBERPUNK BACKGROUND EFFECT === */
+  body::before {
+    content: "";
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: 
+      linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+      linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+  
+  /* Scanline moving animation */
+  .scanline {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(to bottom, transparent 50%, var(--scanline) 51%);
+    background-size: 100% 4px;
+    pointer-events: none; z-index: 10000;
+  }
+
+  /* ===== FIXED TOP HUD ===== */
+  .top-panel {
+    position: fixed; top: 0; left: 0; width: 100%; z-index: 999;
+    background: rgba(5, 5, 5, 0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--neon-blue);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+    padding: 10px 0 15px 0;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+  }
+
+  .inner {
+    max-width: 600px; margin: auto;
+    display: flex; flex-direction: column; gap: 12px; align-items: center;
+    padding: 0 10px;
+  }
+
+  /* --- GLITCH HEADER --- */
+  .teacher-banner {
+    font-family: var(--font-mono);
+    color: var(--neon-red);
+    font-size: 20px; font-weight: 900; text-transform: uppercase;
+    text-shadow: 0 0 10px var(--neon-red);
+    letter-spacing: 2px;
+    margin-bottom: 5px;
+    position: relative;
+    display: inline-block;
+  }
+  .teacher-banner::before {
+    content: '[ SYSTEM: DARK PANEL ]';
+    font-size: 10px; color: var(--neon-blue);
+    display: block; text-align: center; letter-spacing: 4px;
+    margin-bottom: 2px;
+  }
+
+  /* --- TELEGRAM BUTTON --- */
+  .telegram-link { text-decoration: none; width: 100%; display: flex; justify-content: center; }
+  .telegram-pill {
+    background: rgba(0, 168, 255, 0.15);
+    border: 1px solid var(--neon-blue);
+    color: var(--neon-blue);
+    padding: 8px 20px; border-radius: 4px;
+    font-weight: 700; font-size: 13px; letter-spacing: 1px;
+    text-transform: uppercase;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+    transition: 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .telegram-pill:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 25px var(--neon-blue); }
+  .telegram-pill::after {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.8), transparent);
+    transform: rotate(45deg) translate(-100%, -100%);
+    animation: shine 3s infinite;
+  }
+  @keyframes shine { 100% { transform: rotate(45deg) translate(100%, 100%); } }
+
+  /* ===== PREDICTION DASHBOARD ===== */
+  .prediction-row {
+    display: flex; align-items: stretch; justify-content: center; gap: 10px;
+    width: 100%;
+  }
+
+  /* --- COMMON BOX STYLES --- */
+  .cyber-box {
+    background: rgba(20, 20, 20, 0.6);
+    border: 1px solid var(--glass-border);
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    transition: all 0.3s ease;
+  }
+  .cyber-box:hover { border-color: var(--neon-blue); box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.1); }
+
+  /* Side Boxes */
+  .side-box { width: 85px; height: 90px; }
+  .box-label {
+    font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 5px; font-family: var(--font-mono);
+  }
+
+  /* --- COLOR DOT (Hologram) --- */
+  .dot {
+    width: 35px; height: 35px; border-radius: 50%;
+    background: #333; /* Default */
+    box-shadow: 0 0 10px #000;
+    border: 2px solid rgba(255,255,255,0.1);
+    transition: 0.5s;
+  }
+  
+  /* --- CENTER MAIN BOX --- */
+  .center-box {
+    flex: 1; height: 90px;
+    background: linear-gradient(180deg, rgba(0,20,30,0.8), rgba(0,10,10,0.9));
+    border: 1px solid var(--neon-blue);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.15);
+  }
+  .server-status {
+    font-size: 10px; color: var(--neon-green); font-family: var(--font-mono);
+    margin-bottom: 2px; display: flex; align-items: center; gap: 5px;
+  }
+  .server-status::before {
+    content: ''; width: 6px; height: 6px; background: var(--neon-green); border-radius: 50%;
+    box-shadow: 0 0 8px var(--neon-green);
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.3; } }
+
+  .prediction {
+    font-size: 32px; font-weight: 900;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: 0 0 15px rgba(255,255,255,0.5);
+    letter-spacing: 2px;
+    margin-top: 5px;
+  }
+
+  /* --- NUMBER CIRCLE --- */
+  .num-circle {
+    min-width: 45px; height: 35px; border-radius: 4px;
+    background: #111; border: 1px solid #333;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-family: var(--font-mono); font-size: 20px; font-weight: bold;
+    box-shadow: inset 0 0 10px #000;
+  }
+
+  /* ===== PERIOD BAR ===== */
+  .period-bar {
+    width: 100%; height: 36px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #333;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 15px;
+    font-family: var(--font-mono);
+    color: var(--neon-green);
+    font-size: 14px; letter-spacing: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .period-bar::before {
+    content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 4px;
+    background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green);
+  }
+  #periodBar { z-index: 2; font-weight: 700;}
+
+  /* ===== IFRAME ===== */
+  .game-wrap {
+    position: fixed; top: 220px; left: 0; right: 0; bottom: 0;
+    background: #000;
+    border-top: 2px solid var(--neon-red);
+    z-index: 1;
+  }
+  .game-iframe { width: 100%; height: 100%; border: 0; display: block; background: #000; }
+
+  /* Media Queries */
+  @media(max-width: 380px) {
+    .prediction { font-size: 26px; }
+    .side-box { width: 70px; }
+    .num-circle { min-width: 35px; font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Screen Overlay Effects -->
+  <div class="scanline"></div>
+
+  <div class="top-panel">
+    <div class="inner">
+      
+      <div class="teacher-banner">DARK PENEL</div>
+      
+      <a href="https://t.me/darkcyber55" target="_blank" class="telegram-link">
+        <div class="telegram-pill">⚡ JOIN VIP CHANNEL ⚡</div>
+      </a>
+
+      <div class="prediction-row">
+        <!-- Color Box -->
+        <div class="cyber-box side-box">
+          <div class="box-label">SIGNAL</div>
+          <div class="dot" id="colorDot"></div>
+        </div>
+
+        <!-- Main Prediction Box -->
+        <div class="cyber-box center-box">
+          <div class="server-status" id="serverStatus">CONNECTING...</div>
+          <div class="prediction" id="predictionText">--</div>
+        </div>
+
+        <!-- Number Box -->
+        <div class="cyber-box side-box">
+          <div class="box-label">DIGIT</div>
+          <div class="num-circle">
+            <span id="numberPredictionText">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="period-bar">
+        <span>ID:</span>
+        <span id="periodBar">WAITING...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="game-wrap">
+    <iframe class="game-iframe"
+      src="https://www.jalwagameapp5.com/#/register?invitationCode=416174049222"
+      allowfullscreen></iframe>
+  </div>
+
+  <script>
+  (function(){
+    // --- ORIGINAL LOGIC KEPT EXACTLY SAME ---
+    const API_URL='https://api.bdg88zf.com/api/webapi/GetGameIssue';
+    const API_PAYLOAD={
+      typeId:1,language:0,
+      random:"40079dcba93a48769c6ee9d4d4fae23f",
+      signature:"D12108C4F57C549D82B23A91E0FA20AE",
+      timestamp:1727792520
+    };
+
+    const predictionText=document.getElementById('predictionText');
+    const numberPredictionText=document.getElementById('numberPredictionText');
+    const colorDot=document.getElementById('colorDot');
+    const serverStatus=document.getElementById('serverStatus');
+    const periodBar=document.getElementById('periodBar');
+    let lastPeriod=null;
+
+    const PREDICTION_LOGIC = {
+        2: { number: '0/7', size: 'SMALL', color: 'GREEN' }, 
+        5: { number: '5/9', size: 'BIGG', color: 'GREEN' },
+        7: { number: '0/2', size: 'SMALL', color: 'RED' },
+        8: { number: '4/6', size: 'SMALL', color: 'RED' },
+        9: { number: '1/3', size: 'SMALL', color: 'GREEN' },
+        0: { number: '5/9', size: 'BIGG', color: 'RED' },
+        1: { number: '0/2/4', size: 'SMALL', color: 'RED' },
+        3: { number: '7/1', size: 'BIGG', color: 'GREEN' },
+        4: { number: '6/8', size: 'BIGG', color: 'RED' },
+        6: { number: '5/7', size: 'BIGG', color: 'GREEN' }
+    };
+
+    // Enhanced Gradients for Cyber Look
+    const COLOR_STYLES = {
+        'GREEN': 'linear-gradient(135deg, #00ff41, #008f11)', 
+        'RED': 'linear-gradient(135deg, #ff003c, #8f0000)'     
+    };
+
+    function updatePrediction(lastDigit) {
+        const logic = PREDICTION_LOGIC[lastDigit];
+        
+        if (logic) {
+            // Update Text
+            predictionText.textContent = logic.size;
+            
+            // Neon Text Colors
+            if(logic.size === 'BIGG') {
+                predictionText.style.color = '#ffaa00'; // Amber for Big
+                predictionText.style.textShadow = '0 0 20px #ffaa00';
+            } else {
+                predictionText.style.color = '#00f3ff'; // Cyan for Small
+                predictionText.style.textShadow = '0 0 20px #00f3ff';
+            }
+            
+            // Update Number
+            numberPredictionText.textContent = logic.number;
+            numberPredictionText.style.color = '#fff';
+            
+            // Update Dot
+            const colorKey = logic.color.toUpperCase();
+            colorDot.style.background = COLOR_STYLES[colorKey] || '#333';
+            // Add heavy glow to dot
+            const shadowColor = colorKey === 'RED' ? '#ff003c' : '#00ff41';
+            colorDot.style.boxShadow = `0 0 15px ${shadowColor}, inset 0 0 10px rgba(255,255,255,0.5)`;
+
+        } else {
+            predictionText.textContent = 'ERR';
+            predictionText.style.color = '#ff003c'; 
+            numberPredictionText.textContent = '?';
+            colorDot.style.background = '#333';
+            colorDot.style.boxShadow = 'none';
+        }
+    }
+
+
+    async function fetchPeriod(){
+      try{
+        if (lastPeriod === null) {
+            predictionText.textContent='SCAN...';
+            predictionText.style.color = '#888';
+            predictionText.style.textShadow = 'none';
+            numberPredictionText.textContent = '-';
+            colorDot.style.background = '#222';
+            colorDot.style.boxShadow = 'none';
+        }
+        
+        const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(API_PAYLOAD)});
+        const j=await r.json();
+        
+        if(j && j.code===0 && j.data && j.data.issueNumber){
+          serverStatus.innerHTML = 'SYSTEM ONLINE <span style="color:#00ff41">•</span>';
+          serverStatus.style.color = '#00ff41';
+          
+          const currentPeriod=j.data.issueNumber.toString();
+          
+          if(currentPeriod!==lastPeriod){
+            lastPeriod=currentPeriod;
+            
+            const nextPeriodNum = parseInt(currentPeriod) + 1;
+            periodBar.textContent = 'Active: ' + nextPeriodNum;
+            
+            const lastDigitOfCurrentPeriod = parseInt(currentPeriod.slice(-1)); 
+            if(!isNaN(lastDigitOfCurrentPeriod)){
+                updatePrediction(lastDigitOfCurrentPeriod); 
+            }
+          }
+        }else{
+          serverStatus.innerHTML = 'SYSTEM OFFLINE <span style="color:red">•</span>';
+          serverStatus.style.color = 'red';
+        }
+      }catch(e){
+        serverStatus.innerHTML = 'NET ERROR <span style="color:red">X</span>';
+        serverStatus.style.color = 'red';
+      }
+    }
+
+    fetchPeriod();
+    setInterval(fetchPeriod, 1000); 
+  })();
+  </script>
+</body>
+</html>
