@@ -12,13 +12,11 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v3
 
-      # --- UPDATE 1: NODE VERSION 20 (Required for Cordova 13) ---
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
-      # --- UPDATE 2: JAVA VERSION 17 (Required for latest Android Builds) ---
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
@@ -29,7 +27,10 @@ jobs:
         run: |
           npm install -g cordova
           npm install -g cordova-res
-          npm install -g javascript-obfuscator
+          
+          # --- FIX: ADDED --ignore-scripts TO STOP HUSKY ERROR ---
+          npm install -g javascript-obfuscator --ignore-scripts
+          
           npm link javascript-obfuscator
           npm install cordova-plugin-admob-plus --save
 
@@ -37,7 +38,6 @@ jobs:
         run: |
           cordova create myApp ${{ github.event.client_payload.package_name }} "${{ github.event.client_payload.app_name }}"
           cd myApp
-          # Using latest android platform compatible with Node 20
           cordova platform add android
 
       # --- FETCH SOURCE ---
@@ -52,7 +52,7 @@ jobs:
             exit 1
           fi
 
-      # --- INJECT ADMOB LOGIC (Node.js based - NO ERROR) ---
+      # --- INJECT ADMOB LOGIC ---
       - name: Inject AdMob System
         working-directory: ./myApp
         run: |
