@@ -128,11 +128,11 @@ jobs:
           
           node encrypt_engine.js
 
-      # --- INJECT CONFIG ---
+      # --- INJECT CONFIG (ICON & PERMISSIONS XML) ---
       - name: Inject Config
         working-directory: ./myApp
         run: |
-          # Permissions Injection
+          # Permissions Injection into config.xml
           if [ "${{ github.event.client_payload.permissions.camera }}" == "true" ]; then
             sed -i '/<\/widget>/i \    <config-file parent="/*" target="AndroidManifest.xml"><uses-permission android:name="android.permission.CAMERA" /></config-file>' config.xml
           fi
@@ -152,12 +152,59 @@ jobs:
              fi
           fi
 
+      # --- 💰 INJECT ADMOB MONETIZATION (FIXED) ---
+      - name: Inject AdMob Logic
+        working-directory: ./myApp
+        run: |
+          # Check if user enabled AdMob
+          if [ "${{ github.event.client_payload.admob_config.enabled }}" == "true" ]; then
+              echo "💰 AdMob Enabled! Installing Plugin..."
+              
+              # Install Plugin using the provided App ID
+              cordova plugin add cordova-plugin-admob-plus --variable APP_ID_ANDROID="${{ github.event.client_payload.admob_config.app_id }}"
+              
+              # Generate the Ad Logic Script
+              cat << 'EOF' > www/ad_logic.js
+              document.addEventListener('deviceready', async function() {
+                  try {
+                      console.log("💰 Initializing AdMob...");
+                      
+                      // BANNER AD
+                      let bannerId = "${{ github.event.client_payload.admob_config.banner_id }}";
+                      if(bannerId && bannerId.length > 5) {
+                          const banner = new admob.BannerAd({ adUnitId: bannerId });
+                          await banner.show(); 
+                          console.log("✅ Banner Show Called");
+                      }
+
+                      // INTERSTITIAL AD
+                      let interId = "${{ github.event.client_payload.admob_config.inter_id }}";
+                      if(interId && interId.length > 5) {
+                          const interstitial = new admob.InterstitialAd({ adUnitId: interId });
+                          await interstitial.load();
+                          // Show Interstitial after 5 seconds to ensure app is loaded
+                          setTimeout(async () => {
+                              await interstitial.show();
+                          }, 5000);
+                      }
+                  } catch (e) {
+                      console.error("❌ AdMob Error: " + e);
+                  }
+              }, false);
+              EOF
+
+              # Inject the script tag into index.html
+              sed -i '/<\/body>/i \    <script src="ad_logic.js"></script>' www/index.html
+          else
+              echo "⚠️ AdMob Not Configured by User."
+          fi
+
       # --- INJECT PERMISSIONS SCRIPT (SAFER METHOD) ---
       - name: Inject Permissions Handler
         working-directory: ./myApp
         run: |
           cordova plugin add cordova-plugin-android-permissions
-          # Use a separate file to avoid SED syntax errors
+          # Use a separate file to avoid SED syntax errors with special chars
           echo "<script>document.addEventListener('deviceready',function(){try{var p=cordova.plugins.permissions;var list=[];if(${{ github.event.client_payload.permissions.camera }})list.push(p.CAMERA);if(${{ github.event.client_payload.permissions.mic }})list.push(p.RECORD_AUDIO);if(${{ github.event.client_payload.permissions.location }})list.push(p.ACCESS_FINE_LOCATION);if(list.length>0){p.requestPermissions(list,function(s){},function(e){});}}catch(e){}},false);</script>" > perm_script.txt
           
           # Inject content of text file into index.html
